@@ -3,19 +3,22 @@ package org.virtuslab.unicorn.repositories
 import java.util.UUID
 
 import org.scalatest.{ FlatSpecLike, Matchers }
-import org.virtuslab.unicorn.TestUnicorn.driver.api._
+import org.virtuslab.unicorn.TestUnicorn.profile.api._
 import org.virtuslab.unicorn._
-import slick.driver.H2Driver
+import slick.jdbc.H2Profile
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-object UUIDUnicorn extends UnicornCore[UUID] with HasJdbcDriver {
-  override val driver = H2Driver
+object UUIDUnicorn extends UnicornCore[UUID] with HasJdbcProfile {
+  override val profile = H2Profile
+}
 
+object UUIDUnicornIdentifiers extends Identifiers[UUID] {
+  override def ordering: Ordering[UUID] = implicitly[Ordering[UUID]]
 }
 
 trait UUIDTestUnicorn {
-  val unicorn: Unicorn[UUID] with HasJdbcDriver = UUIDUnicorn
+  val unicorn: Unicorn[UUID] with HasJdbcProfile = UUIDUnicorn
 }
 
 /**
@@ -25,11 +28,10 @@ trait UUIDTestUnicorn {
 trait UUIDTable extends UUIDTestUnicorn {
 
   import unicorn._
-  import driver.api._
 
-  case class UniqueUserId(id: UUID) extends BaseId
+  case class UniqueUserId(id: UUID) extends BaseId[UUID]
 
-  case class PersonRow(id: Option[UniqueUserId], name: String) extends WithId[UniqueUserId]
+  case class PersonRow(id: Option[UniqueUserId], name: String) extends WithId[UUID, UniqueUserId]
 
   class UniquePersons(tag: Tag) extends IdTable[UniqueUserId, PersonRow](tag, "U_USERS") {
     def name = column[String]("NAME")

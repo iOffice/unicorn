@@ -1,9 +1,10 @@
 package org.virtuslab.unicorn
 
 import org.scalatest._
-import play.api.Play
-import play.api.test.FakeApplication
-import slick.driver.H2Driver.api._
+import play.api.db.slick.DatabaseConfigProvider
+import play.api.{ Environment, Play }
+import play.api.inject.guice.GuiceApplicationBuilder
+import slick.jdbc.JdbcProfile
 
 trait BasePlayTest
     extends FlatSpecLike
@@ -13,23 +14,29 @@ trait BasePlayTest
     with BaseTest[Long]
     with BeforeAndAfterAll {
 
-  private val testDb = Map(
-    "slick.dbs.default.driver" -> "slick.driver.H2Driver$",
+  private val testDb: Map[String, Any] = Map(
+    "slick.dbs.default.profile" -> "slick.jdbc.H2Profile$",
     "slick.dbs.default.db.driver" -> "org.h2.Driver",
     "slick.dbs.default.db.url" -> "jdbc:h2:mem:play",
     "slick.dbs.default.db.user" -> "sa",
     "slick.dbs.default.db.password" -> ""
   )
 
-  implicit val app: FakeApplication = {
-    val fake = new FakeApplication(additionalConfiguration = testDb)
+  implicit val app = {
+    val fake = new GuiceApplicationBuilder()
+      .configure(testDb)
+      .in(Environment.simple())
+      .build
     Play.start(fake)
     fake
   }
 
-  override lazy val unicorn: Unicorn[Long] with HasJdbcDriver = LongUnicornPlay
+  override lazy val unicorn: Unicorn[Long] with HasJdbcProfile =
+    new LongUnicornPlay(DatabaseConfigProvider.get[JdbcProfile](app))
 
-  override protected def beforeEach(data: TestData): Unit = {
+  import unicorn.profile.api._
+
+  override protected def beforeEach(): Unit = {
     DB.run(sqlu"""DROP ALL OBJECTS""")
     super.beforeEach()
   }

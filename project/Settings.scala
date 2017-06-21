@@ -1,23 +1,25 @@
 import com.typesafe.sbt.SbtScalariform
 import com.typesafe.sbt.pgp.PgpKeys
-import sbtrelease.ReleasePlugin
-import sbtrelease.ReleasePlugin.ReleaseKeys
-import scoverage.ScoverageSbtPlugin._
+import sbtrelease.ReleasePlugin.autoImport._
 import sbt.Keys._
 import sbt._
 import xerial.sbt.Sonatype
 
 object Settings {
 
+  val scala_2_11 = "2.11.8"
+  val scala_2_12 = "2.12.1"
+
   val alsoOnTest = "compile->compile;test->test"
 
   // settings for ALL modules, including parent
-  val core = Seq(
+  val common = Seq(
     organization := "org.virtuslab",
-    scalaVersion := "2.11.6",
-    crossScalaVersions := Seq("2.10.4", scalaVersion.value),
-    ReleaseKeys.crossBuild := true,
-    ReleaseKeys.publishArtifactsAction := PgpKeys.publishSigned.value,
+
+    parallelExecution in Test := false,
+    testOptions in Test += Tests.Argument("-oDF"),
+
+    releasePublishArtifactsAction := PgpKeys.publishSigned.value,
       pomExtra := <url>https://github.com/VirtusLab/unicorn</url>
       <licenses>
         <license>
@@ -43,15 +45,24 @@ object Settings {
         </developer>
       </developers>
   ) ++
-    Sonatype.sonatypeSettings ++
-    ReleasePlugin.releaseSettings
+    Sonatype.sonatypeSettings
+
+  val core = common ++ Seq(
+    scalaVersion := scala_2_11,
+    crossScalaVersions := Seq(scala_2_11, scala_2_12),
+    releaseCrossBuild := true
+  )
+
+  val play = common ++ Seq(
+    scalaVersion := scala_2_11
+  )
 
   // common settings for play and core modules
-  val common = core ++ Seq(
+  val parent = common ++ Seq(
+    scalaVersion := scala_2_11,
     resolvers += Resolver.typesafeRepo("releases"),
     resolvers += Resolver.sonatypeRepo("releases"),
     resolvers += Resolver.sonatypeRepo("snapshots"),
-    parallelExecution in Test := false,
     scalacOptions ++= Seq(
       "-feature",
       "-deprecation",
@@ -60,6 +71,6 @@ object Settings {
       "-Xfatal-warnings"
     ),
     updateOptions := updateOptions.value.withCachedResolution(true),
-    ScoverageKeys.coverageFailOnMinimum := true
+    scoverage.ScoverageKeys.coverageFailOnMinimum := true
   ) ++ SbtScalariform.scalariformSettings
 }
